@@ -92,6 +92,7 @@ const ModesView = ({ onDone }: ModesViewProps) => {
 	const [isCreateModeDialogOpen, setIsCreateModeDialogOpen] = useState(false)
 	const [isSystemPromptDisclosureOpen, setIsSystemPromptDisclosureOpen] = useState(false)
 	const [isExporting, setIsExporting] = useState(false)
+	const [isImporting, setIsImporting] = useState(false)
 	const [showImportDialog, setShowImportDialog] = useState(false)
 	const [hasRulesToExport, setHasRulesToExport] = useState<Record<string, boolean>>({})
 
@@ -421,6 +422,14 @@ const ModesView = ({ onDone }: ModesViewProps) => {
 				if (!message.success) {
 					// Show error message
 					console.error("Failed to export mode:", message.error)
+				}
+			} else if (message.type === "importModeResult") {
+				setIsImporting(false)
+				setShowImportDialog(false)
+
+				if (!message.success) {
+					// Show error message
+					console.error("Failed to import mode:", message.error)
 				}
 			} else if (message.type === "checkRulesDirectoryResult") {
 				setHasRulesToExport((prev) => ({
@@ -1100,7 +1109,7 @@ const ModesView = ({ onDone }: ModesViewProps) => {
 								variant="default"
 								onClick={() => {
 									const currentMode = getCurrentMode()
-									if (currentMode?.slug) {
+									if (currentMode?.slug && !isExporting) {
 										setIsExporting(true)
 										vscode.postMessage({
 											type: "exportMode",
@@ -1119,10 +1128,11 @@ const ModesView = ({ onDone }: ModesViewProps) => {
 						<Button
 							variant="default"
 							onClick={() => setShowImportDialog(true)}
+							disabled={isImporting}
 							title={t("prompts:modes.importMode")}
 							data-testid="import-mode-button">
 							<Download className="h-4 w-4" />
-							{t("prompts:modes.importMode")}
+							{isImporting ? t("prompts:importMode.importing") : t("prompts:modes.importMode")}
 						</Button>
 					</div>
 
@@ -1503,16 +1513,21 @@ const ModesView = ({ onDone }: ModesViewProps) => {
 							<Button
 								variant="default"
 								onClick={() => {
-									const selectedLevel = (
-										document.querySelector('input[name="importLevel"]:checked') as HTMLInputElement
-									)?.value as "global" | "project"
-									setShowImportDialog(false)
-									vscode.postMessage({
-										type: "importMode",
-										source: selectedLevel || "project",
-									})
-								}}>
-								{t("prompts:importMode.import")}
+									if (!isImporting) {
+										const selectedLevel = (
+											document.querySelector(
+												'input[name="importLevel"]:checked',
+											) as HTMLInputElement
+										)?.value as "global" | "project"
+										setIsImporting(true)
+										vscode.postMessage({
+											type: "importMode",
+											source: selectedLevel || "project",
+										})
+									}
+								}}
+								disabled={isImporting}>
+								{isImporting ? t("prompts:importMode.importing") : t("prompts:importMode.import")}
 							</Button>
 						</div>
 					</div>
